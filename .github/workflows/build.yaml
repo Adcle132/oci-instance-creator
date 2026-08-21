@@ -41,10 +41,15 @@ jobs:
           RAW_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
         run: |
           mkdir -p keys
-          # Limpia espacios invisibles, decodifica y convierte a RSA estricto
+          # Decodifica removiendo saltos de linea/espacios invisibles de Base64
           echo "$RAW_KEY" | tr -d ' \t\r\n' | base64 --decode > keys/temp.key
+          
+          # Convierte de PKCS#8 a PKCS#1 (RSA estricto)
           openssl rsa -in keys/temp.key -out keys/oci.key
+          
+          # Normaliza saltos de linea estilo Unix (\n)
           sed -i 's/\r$//' keys/oci.key
+          
           rm -f keys/temp.key
           chmod 600 keys/oci.key
 
@@ -71,24 +76,22 @@ jobs:
           VOLUME_SIZE: ${{ secrets.VOLUME_SIZE }}
           CREATE_INTERVAL_SECONDS: ${{ secrets.CREATE_INTERVAL_SECONDS }}
         run: |
-          # Elimina espacios o saltos de linea accidentales al inicio/final de cada variable
-          CLEAN_USER_ID=$(echo "$OCI_USER_ID" | xargs)
-          CLEAN_USER_OCID=$(echo "$OCI_USER_OCID" | xargs)
-          CLEAN_TENANCY_ID=$(echo "$OCI_TENANCY_ID" | xargs)
-          CLEAN_TENANCY_OCID=$(echo "$OCI_TENANCY_OCID" | xargs)
-          CLEAN_SUBNET_ID=$(echo "$OCI_SUBNET_ID" | xargs)
-          CLEAN_SUBNET_OCID=$(echo "$SUBNET_OCID" | xargs)
-          CLEAN_IMAGE_ID=$(echo "$OCI_IMAGE_ID" | xargs)
-          CLEAN_IMAGE_OCID=$(echo "$OCI_IMAGE_OCID" | xargs)
-          CLEAN_COMPARTMENT_OCID=$(echo "$OCI_COMPARTMENT_OCID" | xargs)
-          CLEAN_REGION=$(echo "$OCI_REGION" | xargs)
-          CLEAN_FINGERPRINT=$(echo "$OCI_FINGERPRINT" | xargs)
-          CLEAN_SSH_KEY=$(echo "$SSH_KEY" | xargs)
-          CLEAN_SSH_PUBLIC_KEY=$(echo "$SSH_PUBLIC_KEY" | xargs)
-          CLEAN_CPUS=$(echo "$CPUS" | xargs)
-          CLEAN_SHAPE=$(echo "$SHAPE" | xargs)
-          CLEAN_VOLUME_SIZE=$(echo "$VOLUME_SIZE" | xargs)
-          CLEAN_INTERVAL=$(echo "$CREATE_INTERVAL_SECONDS" | xargs)
+          # Elimina espacios, tabulaciones y saltos de linea accidentales (\r / \n) de los Secrets
+          CLEAN_USER_ID=$(echo "$OCI_USER_ID" | tr -d ' \t\r\n')
+          CLEAN_USER_OCID=$(echo "$OCI_USER_OCID" | tr -d ' \t\r\n')
+          CLEAN_TENANCY_ID=$(echo "$OCI_TENANCY_ID" | tr -d ' \t\r\n')
+          CLEAN_TENANCY_OCID=$(echo "$OCI_TENANCY_OCID" | tr -d ' \t\r\n')
+          CLEAN_SUBNET_ID=$(echo "$OCI_SUBNET_ID" | tr -d ' \t\r\n')
+          CLEAN_SUBNET_OCID=$(echo "$SUBNET_OCID" | tr -d ' \t\r\n')
+          CLEAN_IMAGE_ID=$(echo "$OCI_IMAGE_ID" | tr -d ' \t\r\n')
+          CLEAN_IMAGE_OCID=$(echo "$OCI_IMAGE_OCID" | tr -d ' \t\r\n')
+          CLEAN_COMPARTMENT_OCID=$(echo "$OCI_COMPARTMENT_OCID" | tr -d ' \t\r\n')
+          CLEAN_REGION=$(echo "$OCI_REGION" | tr -d ' \t\r\n')
+          CLEAN_FINGERPRINT=$(echo "$OCI_FINGERPRINT" | tr -d ' \t\r\n')
+          CLEAN_CPUS=$(echo "$CPUS" | tr -d ' \t\r\n')
+          CLEAN_SHAPE=$(echo "$SHAPE" | tr -d ' \t\r\n')
+          CLEAN_VOLUME_SIZE=$(echo "$VOLUME_SIZE" | tr -d ' \t\r\n')
+          CLEAN_INTERVAL=$(echo "$CREATE_INTERVAL_SECONDS" | tr -d ' \t\r\n')
 
           docker run --rm \
             -v $(pwd)/keys/oci.key:/keys/oci.key \
@@ -103,8 +106,8 @@ jobs:
             -e OCI_COMPARTMENT_OCID="$CLEAN_COMPARTMENT_OCID" \
             -e OCI_REGION="$CLEAN_REGION" \
             -e OCI_FINGERPRINT="$CLEAN_FINGERPRINT" \
-            -e SSH_KEY="$CLEAN_SSH_KEY" \
-            -e SSH_PUBLIC_KEY="$CLEAN_SSH_PUBLIC_KEY" \
+            -e SSH_KEY="$SSH_KEY" \
+            -e SSH_PUBLIC_KEY="$SSH_PUBLIC_KEY" \
             -e CPUS="$CLEAN_CPUS" \
             -e SHAPE="$CLEAN_SHAPE" \
             -e VOLUME_SIZE="$CLEAN_VOLUME_SIZE" \
