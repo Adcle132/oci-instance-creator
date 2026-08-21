@@ -41,39 +41,73 @@ jobs:
           RAW_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
         run: |
           mkdir -p keys
-          # 1. Decodifica el Base64 eliminando saltos de línea basura
-          echo "$RAW_KEY" | tr -d '\r\n' | base64 --decode > keys/temp.key
-          
-          # 2. Convierte la clave a formato RSA (PKCS#1) de forma transparente
+          # Limpia espacios invisibles, decodifica y convierte a RSA estricto
+          echo "$RAW_KEY" | tr -d ' \t\r\n' | base64 --decode > keys/temp.key
           openssl rsa -in keys/temp.key -out keys/oci.key
-          
-          # 3. Limpieza y permisos estrictos
-          rm keys/temp.key
+          sed -i 's/\r$//' keys/oci.key
+          rm -f keys/temp.key
           chmod 600 keys/oci.key
 
       - name: Verify Key File Header
         run: head -n 1 keys/oci.key
 
-      - name: Run OCI Instance Creator
+      - name: Clean Secrets and Run OCI Instance Creator
+        env:
+          OCI_USER_ID: ${{ secrets.OCI_USER_ID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_TENANCY_ID: ${{ secrets.OCI_TENANCY_ID }}
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
+          SUBNET_OCID: ${{ secrets.SUBNET_OCID }}
+          OCI_IMAGE_ID: ${{ secrets.OCI_IMAGE_ID }}
+          OCI_IMAGE_OCID: ${{ secrets.OCI_IMAGE_OCID }}
+          OCI_COMPARTMENT_OCID: ${{ secrets.OCI_COMPARTMENT_OCID }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          CPUS: ${{ secrets.CPUS }}
+          SHAPE: ${{ secrets.SHAPE }}
+          VOLUME_SIZE: ${{ secrets.VOLUME_SIZE }}
+          CREATE_INTERVAL_SECONDS: ${{ secrets.CREATE_INTERVAL_SECONDS }}
         run: |
+          # Elimina espacios o saltos de linea accidentales al inicio/final de cada variable
+          CLEAN_USER_ID=$(echo "$OCI_USER_ID" | xargs)
+          CLEAN_USER_OCID=$(echo "$OCI_USER_OCID" | xargs)
+          CLEAN_TENANCY_ID=$(echo "$OCI_TENANCY_ID" | xargs)
+          CLEAN_TENANCY_OCID=$(echo "$OCI_TENANCY_OCID" | xargs)
+          CLEAN_SUBNET_ID=$(echo "$OCI_SUBNET_ID" | xargs)
+          CLEAN_SUBNET_OCID=$(echo "$SUBNET_OCID" | xargs)
+          CLEAN_IMAGE_ID=$(echo "$OCI_IMAGE_ID" | xargs)
+          CLEAN_IMAGE_OCID=$(echo "$OCI_IMAGE_OCID" | xargs)
+          CLEAN_COMPARTMENT_OCID=$(echo "$OCI_COMPARTMENT_OCID" | xargs)
+          CLEAN_REGION=$(echo "$OCI_REGION" | xargs)
+          CLEAN_FINGERPRINT=$(echo "$OCI_FINGERPRINT" | xargs)
+          CLEAN_SSH_KEY=$(echo "$SSH_KEY" | xargs)
+          CLEAN_SSH_PUBLIC_KEY=$(echo "$SSH_PUBLIC_KEY" | xargs)
+          CLEAN_CPUS=$(echo "$CPUS" | xargs)
+          CLEAN_SHAPE=$(echo "$SHAPE" | xargs)
+          CLEAN_VOLUME_SIZE=$(echo "$VOLUME_SIZE" | xargs)
+          CLEAN_INTERVAL=$(echo "$CREATE_INTERVAL_SECONDS" | xargs)
+
           docker run --rm \
             -v $(pwd)/keys/oci.key:/keys/oci.key \
-            -e OCI_USER_ID="${{ secrets.OCI_USER_ID }}" \
-            -e OCI_USER_OCID="${{ secrets.OCI_USER_OCID }}" \
-            -e OCI_TENANCY_ID="${{ secrets.OCI_TENANCY_ID }}" \
-            -e OCI_TENANCY_OCID="${{ secrets.OCI_TENANCY_OCID }}" \
-            -e OCI_SUBNET_ID="${{ secrets.OCI_SUBNET_ID }}" \
-            -e SUBNET_OCID="${{ secrets.SUBNET_OCID }}" \
-            -e OCI_IMAGE_ID="${{ secrets.OCI_IMAGE_ID }}" \
-            -e OCI_IMAGE_OCID="${{ secrets.OCI_IMAGE_OCID }}" \
-            -e OCI_COMPARTMENT_OCID="${{ secrets.OCI_COMPARTMENT_OCID }}" \
-            -e OCI_REGION="${{ secrets.OCI_REGION }}" \
-            -e OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}" \
-            -e SSH_KEY="${{ secrets.SSH_KEY }}" \
-            -e SSH_PUBLIC_KEY="${{ secrets.SSH_PUBLIC_KEY }}" \
-            -e CPUS="${{ secrets.CPUS }}" \
-            -e SHAPE="${{ secrets.SHAPE }}" \
-            -e VOLUME_SIZE="${{ secrets.VOLUME_SIZE }}" \
-            -e CREATE_INTERVAL_SECONDS="${{ secrets.CREATE_INTERVAL_SECONDS }}" \
+            -e OCI_USER_ID="$CLEAN_USER_ID" \
+            -e OCI_USER_OCID="$CLEAN_USER_OCID" \
+            -e OCI_TENANCY_ID="$CLEAN_TENANCY_ID" \
+            -e OCI_TENANCY_OCID="$CLEAN_TENANCY_OCID" \
+            -e OCI_SUBNET_ID="$CLEAN_SUBNET_ID" \
+            -e SUBNET_OCID="$CLEAN_SUBNET_OCID" \
+            -e OCI_IMAGE_ID="$CLEAN_IMAGE_ID" \
+            -e OCI_IMAGE_OCID="$CLEAN_IMAGE_OCID" \
+            -e OCI_COMPARTMENT_OCID="$CLEAN_COMPARTMENT_OCID" \
+            -e OCI_REGION="$CLEAN_REGION" \
+            -e OCI_FINGERPRINT="$CLEAN_FINGERPRINT" \
+            -e SSH_KEY="$CLEAN_SSH_KEY" \
+            -e SSH_PUBLIC_KEY="$CLEAN_SSH_PUBLIC_KEY" \
+            -e CPUS="$CLEAN_CPUS" \
+            -e SHAPE="$CLEAN_SHAPE" \
+            -e VOLUME_SIZE="$CLEAN_VOLUME_SIZE" \
+            -e CREATE_INTERVAL_SECONDS="$CLEAN_INTERVAL" \
             -e KEY_PATH="/keys/oci.key" \
             ghcr.io/${{ env.NAME }}:latest
