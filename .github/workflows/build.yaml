@@ -36,10 +36,12 @@ jobs:
           platforms: linux/amd64
           tags: ghcr.io/${{ env.NAME }}:latest
 
-      - name: Create OCI Key File
+      - name: Write OCI Private Key File
         run: |
           mkdir -p keys
-          echo "${{ secrets.OCI_KEY_FILE }}" > keys/oci.key
+          cat << 'EOF' > keys/oci.key
+          ${{ secrets.OCI_PRIVATE_KEY }}
+          EOF
           chmod 600 keys/oci.key
 
       - name: Run OCI Instance Creator
