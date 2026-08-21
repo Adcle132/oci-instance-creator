@@ -39,10 +39,11 @@ jobs:
       - name: Write OCI Private Key File
         run: |
           mkdir -p keys
-          cat << 'EOF' > keys/oci.key
-          ${{ secrets.OCI_PRIVATE_KEY }}
-          EOF
+          echo -n "${{ secrets.OCI_PRIVATE_KEY }}" | base64 --decode > keys/oci.key
           chmod 600 keys/oci.key
+
+      - name: Verify Key Header
+        run: head -n 1 keys/oci.key
 
       - name: Run OCI Instance Creator
         run: |
