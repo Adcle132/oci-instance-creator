@@ -36,21 +36,37 @@ jobs:
           platforms: linux/amd64
           tags: ghcr.io/${{ env.NAME }}:latest
 
-      - name: Write OCI Private Key File
+      - name: Process and Verify OCI Private Key File
         env:
           RAW_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
         run: |
           mkdir -p keys
-          # Decodifica removiendo saltos de linea/espacios invisibles de Base64
-          echo "$RAW_KEY" | tr -d ' \t\r\n' | base64 --decode > keys/temp.key
           
-          # Convierte de PKCS#8 a PKCS#1 (RSA estricto)
+          # Guardar contenido crudo
+          echo "$RAW_KEY" > keys/raw.key
+
+          # Caso 1: Ya viene en texto plano PEM sin codificar
+          if grep -q "BEGIN" keys/raw.key; then
+            echo "La clave está en texto plano PEM."
+            cp keys/raw.key keys/temp.key
+
+          # Caso 2: Codificada 1 vez en Base64
+          elif echo "$RAW_KEY" | tr -d ' \t\r\n' | base64 --decode 2>/dev/null | grep -q "BEGIN"; then
+            echo "La clave tiene 1 nivel de codificación Base64. Decodificando..."
+            echo "$RAW_KEY" | tr -d ' \t\r\n' | base64 --decode > keys/temp.key
+
+          # Caso 3: Codificada 2 veces en Base64
+          else
+            echo "Detectada doble codificación Base64. Decodificando dos veces..."
+            echo "$RAW_KEY" | tr -d ' \t\r\n' | base64 --decode | tr -d ' \t\r\n' | base64 --decode > keys/temp.key
+          fi
+
+          # Validar y convertir clave a estándar RSA (PKCS#1) de Unix
           openssl rsa -in keys/temp.key -out keys/oci.key
-          
-          # Normaliza saltos de linea estilo Unix (\n)
           sed -i 's/\r$//' keys/oci.key
           
-          rm -f keys/temp.key
+          # Limpieza de temporales y permisos
+          rm -f keys/raw.key keys/temp.key
           chmod 600 keys/oci.key
 
       - name: Verify Key File Header
@@ -76,16 +92,11 @@ jobs:
           VOLUME_SIZE: ${{ secrets.VOLUME_SIZE }}
           CREATE_INTERVAL_SECONDS: ${{ secrets.CREATE_INTERVAL_SECONDS }}
         run: |
-          # Elimina espacios, tabulaciones y saltos de linea accidentales (\r / \n) de los Secrets
-          CLEAN_USER_ID=$(echo "$OCI_USER_ID" | tr -d ' \t\r\n')
-          CLEAN_USER_OCID=$(echo "$OCI_USER_OCID" | tr -d ' \t\r\n')
-          CLEAN_TENANCY_ID=$(echo "$OCI_TENANCY_ID" | tr -d ' \t\r\n')
-          CLEAN_TENANCY_OCID=$(echo "$OCI_TENANCY_OCID" | tr -d ' \t\r\n')
-          CLEAN_SUBNET_ID=$(echo "$OCI_SUBNET_ID" | tr -d ' \t\r\n')
-          CLEAN_SUBNET_OCID=$(echo "$SUBNET_OCID" | tr -d ' \t\r\n')
-          CLEAN_IMAGE_ID=$(echo "$OCI_IMAGE_ID" | tr -d ' \t\r\n')
-          CLEAN_IMAGE_OCID=$(echo "$OCI_IMAGE_OCID" | tr -d ' \t\r\n')
-          CLEAN_COMPARTMENT_OCID=$(echo "$OCI_COMPARTMENT_OCID" | tr -d ' \t\r\n')
+          CLEAN_USER_ID=$(echo "${OCI_USER_ID:-$OCI_USER_OCID}" | tr -d ' \t\r\n')
+          CLEAN_TENANCY_ID=$(echo "${OCI_TENANCY_ID:-$OCI_TENANCY_OCID}" | tr -d ' \t\r\n')
+          CLEAN_SUBNET_ID=$(echo "${OCI_SUBNET_ID:-$SUBNET_OCID}" | tr -d ' \t\r\n')
+          CLEAN_IMAGE_ID=$(echo "${OCI_IMAGE_ID:-$OCI_IMAGE_OCID}" | tr -d ' \t\r\n')
+          CLEAN_COMPARTMENT_ID=$(echo "$OCI_COMPARTMENT_OCID" | tr -d ' \t\r\n')
           CLEAN_REGION=$(echo "$OCI_REGION" | tr -d ' \t\r\n')
           CLEAN_FINGERPRINT=$(echo "$OCI_FINGERPRINT" | tr -d ' \t\r\n')
           CLEAN_CPUS=$(echo "$CPUS" | tr -d ' \t\r\n')
@@ -96,14 +107,15 @@ jobs:
           docker run --rm \
             -v $(pwd)/keys/oci.key:/keys/oci.key \
             -e OCI_USER_ID="$CLEAN_USER_ID" \
-            -e OCI_USER_OCID="$CLEAN_USER_OCID" \
+            -e OCI_USER_OCID="$CLEAN_USER_ID" \
             -e OCI_TENANCY_ID="$CLEAN_TENANCY_ID" \
-            -e OCI_TENANCY_OCID="$CLEAN_TENANCY_OCID" \
+            -e OCI_TENANCY_OCID="$CLEAN_TENANCY_ID" \
             -e OCI_SUBNET_ID="$CLEAN_SUBNET_ID" \
-            -e SUBNET_OCID="$CLEAN_SUBNET_OCID" \
+            -e SUBNET_OCID="$CLEAN_SUBNET_ID" \
             -e OCI_IMAGE_ID="$CLEAN_IMAGE_ID" \
-            -e OCI_IMAGE_OCID="$CLEAN_IMAGE_OCID" \
-            -e OCI_COMPARTMENT_OCID="$CLEAN_COMPARTMENT_OCID" \
+            -e OCI_IMAGE_OCID="$CLEAN_IMAGE_ID" \
+            -e OCI_COMPARTMENT_ID="$CLEAN_COMPARTMENT_ID" \
+            -e OCI_COMPARTMENT_OCID="$CLEAN_COMPARTMENT_ID" \
             -e OCI_REGION="$CLEAN_REGION" \
             -e OCI_FINGERPRINT="$CLEAN_FINGERPRINT" \
             -e SSH_KEY="$SSH_KEY" \
