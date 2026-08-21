@@ -39,10 +39,10 @@ jobs:
       - name: Write OCI Private Key File
         run: |
           mkdir -p keys
-          echo -n "${{ secrets.OCI_PRIVATE_KEY }}" | base64 --decode > keys/oci.key
+          printf '%s' "${{ secrets.OCI_PRIVATE_KEY }}" | base64 --decode > keys/oci.key
           chmod 600 keys/oci.key
 
-      - name: Verify Key Header
+      - name: Check Key File Format
         run: head -n 1 keys/oci.key
 
       - name: Run OCI Instance Creator
@@ -50,10 +50,21 @@ jobs:
           docker run --rm \
             -v $(pwd)/keys/oci.key:/keys/oci.key \
             -e OCI_USER_ID="${{ secrets.OCI_USER_ID }}" \
+            -e OCI_USER_OCID="${{ secrets.OCI_USER_OCID }}" \
             -e OCI_TENANCY_ID="${{ secrets.OCI_TENANCY_ID }}" \
+            -e OCI_TENANCY_OCID="${{ secrets.OCI_TENANCY_OCID }}" \
             -e OCI_SUBNET_ID="${{ secrets.OCI_SUBNET_ID }}" \
+            -e SUBNET_OCID="${{ secrets.SUBNET_OCID }}" \
             -e OCI_IMAGE_ID="${{ secrets.OCI_IMAGE_ID }}" \
+            -e OCI_IMAGE_OCID="${{ secrets.OCI_IMAGE_OCID }}" \
+            -e OCI_COMPARTMENT_OCID="${{ secrets.OCI_COMPARTMENT_OCID }}" \
             -e OCI_REGION="${{ secrets.OCI_REGION }}" \
             -e OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}" \
             -e SSH_KEY="${{ secrets.SSH_KEY }}" \
+            -e SSH_PUBLIC_KEY="${{ secrets.SSH_PUBLIC_KEY }}" \
+            -e CPUS="${{ secrets.CPUS }}" \
+            -e SHAPE="${{ secrets.SHAPE }}" \
+            -e VOLUME_SIZE="${{ secrets.VOLUME_SIZE }}" \
+            -e CREATE_INTERVAL_SECONDS="${{ secrets.CREATE_INTERVAL_SECONDS }}" \
+            -e KEY_PATH="/keys/oci.key" \
             ghcr.io/${{ env.NAME }}:latest
