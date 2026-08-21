@@ -37,12 +37,21 @@ jobs:
           tags: ghcr.io/${{ env.NAME }}:latest
 
       - name: Write OCI Private Key File
+        env:
+          RAW_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
         run: |
           mkdir -p keys
-          printf '%s' "${{ secrets.OCI_PRIVATE_KEY }}" | base64 --decode > keys/oci.key
+          # 1. Decodifica el Base64 eliminando saltos de línea basura
+          echo "$RAW_KEY" | tr -d '\r\n' | base64 --decode > keys/temp.key
+          
+          # 2. Convierte la clave a formato RSA (PKCS#1) de forma transparente
+          openssl rsa -in keys/temp.key -out keys/oci.key
+          
+          # 3. Limpieza y permisos estrictos
+          rm keys/temp.key
           chmod 600 keys/oci.key
 
-      - name: Check Key File Format
+      - name: Verify Key File Header
         run: head -n 1 keys/oci.key
 
       - name: Run OCI Instance Creator
