@@ -33,14 +33,24 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          platforms: linux/amd64  # Quitado ARM64 para acelerar la compilación 10x
+          platforms: linux/amd64
           tags: ghcr.io/${{ env.NAME }}:latest
+
+      - name: Create OCI Key File
+        run: |
+          mkdir -p keys
+          echo "${{ secrets.OCI_KEY_FILE }}" > keys/oci.key
+          chmod 600 keys/oci.key
 
       - name: Run OCI Instance Creator
         run: |
           docker run --rm \
-            -e OCI_USER="${{ secrets.OCI_USER }}" \
-            -e OCI_TENANCY="${{ secrets.OCI_TENANCY }}" \
-            -e OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}" \
+            -v $(pwd)/keys/oci.key:/keys/oci.key \
+            -e OCI_USER_ID="${{ secrets.OCI_USER_ID }}" \
+            -e OCI_TENANCY_ID="${{ secrets.OCI_TENANCY_ID }}" \
+            -e OCI_SUBNET_ID="${{ secrets.OCI_SUBNET_ID }}" \
+            -e OCI_IMAGE_ID="${{ secrets.OCI_IMAGE_ID }}" \
             -e OCI_REGION="${{ secrets.OCI_REGION }}" \
+            -e OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}" \
+            -e SSH_KEY="${{ secrets.SSH_KEY }}" \
             ghcr.io/${{ env.NAME }}:latest
