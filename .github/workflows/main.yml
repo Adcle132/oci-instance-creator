@@ -23,16 +23,22 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Create OCI Key File
+        run: |
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > oci.key
+          chmod 600 oci.key
+
       - name: Run OCI Instance Creator
         run: |
           docker run --rm \
+            -v $(pwd)/oci.key:/app/oci.key \
             -e OCI_USER_ID="${{ secrets.OCI_USER_ID }}" \
             -e OCI_TENANCY_ID="${{ secrets.OCI_TENANCY_ID }}" \
             -e OCI_SUBNET_ID="${{ secrets.OCI_SUBNET_ID }}" \
             -e OCI_IMAGE_ID="${{ secrets.OCI_IMAGE_ID }}" \
             -e OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}" \
             -e OCI_REGION="${{ secrets.OCI_REGION }}" \
-            -e KEY_PATH="${{ secrets.KEY_PATH }}" \
+            -e KEY_PATH="/app/oci.key" \
             -e CPUS="${{ secrets.CPUS }}" \
             -e VOLUME_SIZE="${{ secrets.VOLUME_SIZE }}" \
             -e SHAPE="${{ secrets.SHAPE }}" \
