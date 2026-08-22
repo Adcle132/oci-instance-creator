@@ -1,6 +1,10 @@
 name: Deploy OCI Instance Creator to Docker
 
 on:
+  schedule:
+    # Se ejecuta automáticamente cada 5 horas
+    - cron: '0 */5 * * *'
+  workflow_dispatch:
   push:
     branches:
       - '*'
